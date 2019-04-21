@@ -20,6 +20,7 @@ type Config struct {
 	Hybrik                 *Hybrik
 	Zencoder               *Zencoder
 	Bitmovin               *Bitmovin
+	MediaConvert           *MediaConvert
 	Log                    *logging.Config
 }
 
@@ -47,6 +48,16 @@ type ElasticTranscoder struct {
 	SecretAccessKey string `envconfig:"AWS_SECRET_ACCESS_KEY"`
 	Region          string `envconfig:"AWS_REGION"`
 	PipelineID      string `envconfig:"ELASTICTRANSCODER_PIPELINE_ID"`
+}
+
+type MediaConvert struct {
+	AccessKeyID     string `envconfig:"AWS_ACCESS_KEY_ID"`
+	SecretAccessKey string `envconfig:"AWS_SECRET_ACCESS_KEY"`
+	Region          string `envconfig:"AWS_REGION"`
+	Endpoint        string `envconfig:"MEDIACONVERT_ENDPOINT"`
+	Queue           string `envconfig:"MEDIACONVERT_QUEUE_ARN"`
+	Role            string `envconfig:"MEDIACONVERT_ROLE_ARN"`
+	Destination     string `envconfig:"MEDIACONVERT_DESTINATION"`
 }
 
 // ElementalConductor represents the set of configurations for the Elemental
