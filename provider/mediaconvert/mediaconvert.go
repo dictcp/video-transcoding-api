@@ -18,8 +18,6 @@ package mediaconvert // import "github.com/NYTimes/video-transcoding-api/provide
 import (
 	"errors"
 	"fmt"
-
-	// "fmt"
 	"path/filepath"
 	"regexp"
 	"strconv"
@@ -32,8 +30,6 @@ import (
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/credentials"
 	"github.com/aws/aws-sdk-go/aws/session"
-	"github.com/aws/aws-sdk-go/service/elastictranscoder"
-	"github.com/aws/aws-sdk-go/service/elastictranscoder/elastictranscoderiface"
 	"github.com/aws/aws-sdk-go/service/mediaconvert"
 )
 
@@ -57,7 +53,6 @@ func init() {
 
 type awsProvider struct {
 	c      mediaconvert.MediaConvert
-	ce     elastictranscoderiface.ElasticTranscoderAPI
 	config *config.MediaConvert
 }
 
@@ -269,12 +264,14 @@ func (p *awsProvider) DeletePreset(presetID string) error {
 }
 
 func (p *awsProvider) JobStatus(job *db.Job) (*provider.JobStatus, error) {
-	/*
+
 	id := job.ProviderJobID
-	resp, err := p.c.ReadJob(&elastictranscoder.ReadJobInput{Id: aws.String(id)})
+	resp, err := p.c.GetJob(&mediaconvert.GetJobInput{Id: aws.String(id)})
 	if err != nil {
 		return nil, err
 	}
+
+	/*
 	totalJobs := len(resp.Job.Outputs)
 	completedJobs := float64(0)
 	outputs := make(map[string]interface{}, totalJobs)
@@ -302,7 +299,11 @@ func (p *awsProvider) JobStatus(job *db.Job) (*provider.JobStatus, error) {
 			Width:    aws.Int64Value(resp.Job.Input.DetectedProperties.Width),
 		}
 	}
+
+	 */
+
 	statusMessage := ""
+	/*
 	if len(resp.Job.Outputs) > 0 {
 		statusMessage = aws.StringValue(resp.Job.Outputs[0].StatusDetail)
 		if strings.Contains(statusMessage, ":") {
@@ -310,28 +311,31 @@ func (p *awsProvider) JobStatus(job *db.Job) (*provider.JobStatus, error) {
 			statusMessage = strings.TrimSpace(errorMessage)
 		}
 	}
+	*/
+
+	percentage := 0.0
+	if (resp.Job.JobPercentComplete != nil){
+		percentage = float64(*resp.Job.JobPercentComplete)
+	}
+
 	return &provider.JobStatus{
 		ProviderJobID:  aws.StringValue(resp.Job.Id),
 		Status:         p.statusMap(aws.StringValue(resp.Job.Status)),
 		StatusMessage:  statusMessage,
-		Progress:       completedJobs / float64(totalJobs) * 100,
-		ProviderStatus: map[string]interface{}{"outputs": outputs},
-		SourceInfo:     sourceInfo,
+		Progress:       percentage,
+		// ProviderStatus: map[string]interface{}{"outputs": outputs},
+		// SourceInfo:     sourceInfo,
+		/*
 		Output: provider.JobOutput{
 			Destination: outputDestination,
 			Files:       outputFiles,
 		},
-	}, nil
-	*/
 
-	return &provider.JobStatus{
-		ProviderJobID:  "0",
-		Status:         "0",
-		StatusMessage:  "",
+		 */
 	}, nil
 }
 
-func (p *awsProvider) getOutputDestination(job *db.Job, awsJob *elastictranscoder.Job) (string, error) {
+func (p *awsProvider) getOutputDestination(job *db.Job, awsJob *mediaconvert.Job) (string, error) {
 	/*
 	readPipelineOutput, err := p.c.ReadPipeline(&elastictranscoder.ReadPipelineInput{
 		Id: awsJob.PipelineId,
@@ -348,7 +352,7 @@ func (p *awsProvider) getOutputDestination(job *db.Job, awsJob *elastictranscode
 	return "", nil
 }
 
-func (p *awsProvider) getOutputFiles(job *elastictranscoder.Job) ([]provider.OutputFile, error) {
+func (p *awsProvider) getOutputFiles(job *mediaconvert.Job) ([]provider.OutputFile, error) {
 	/*
 	pipeline, err := p.c.ReadPipeline(&elastictranscoder.ReadPipelineInput{
 		Id: job.PipelineId,
@@ -398,16 +402,18 @@ func (p *awsProvider) getOutputFiles(job *elastictranscoder.Job) ([]provider.Out
 
 func (p *awsProvider) statusMap(awsStatus string) provider.Status {
 	switch awsStatus {
-	case "Submitted":
+	case "SUBMITTED":
 		return provider.StatusQueued
-	case "Progressing":
+	case "PROGRESSING":
 		return provider.StatusStarted
-	case "Complete":
+	case "COMPLETE":
 		return provider.StatusFinished
-	case "Canceled":
+	case "CANCELED":
 		return provider.StatusCanceled
-	default:
+	case "ERROR":
 		return provider.StatusFailed
+	default:
+		return provider.StatusUnknown
 	}
 }
 
